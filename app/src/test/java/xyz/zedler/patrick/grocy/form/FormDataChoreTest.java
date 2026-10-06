@@ -46,7 +46,30 @@ public class FormDataChoreTest {
     assertEquals(1, values.get("track_date_only"));
     assertEquals("no-assignment", values.get("assignment_type"));
     assertEquals("", values.get("assignment_config"));
+    assertEquals(0, values.get("rollover"));
+    assertEquals(0, values.get("consume_product_on_execution"));
     assertFalse(values.containsKey("id"));
+  }
+
+  @Test
+  public void yearlyPreservesIntervalAndLeapDayStart() {
+    Map<String, Object> values = FormDataChore.create("Service", "", "yearly", 2, 31,
+        Collections.singletonList("monday"), LocalDate.of(2028, 2, 29));
+    assertEquals("yearly", values.get("period_type"));
+    assertEquals(2, values.get("period_interval"));
+    assertEquals("2028-02-29 00:00:00", values.get("start_date"));
+    assertEquals(1, values.get("period_days"));
+    assertEquals("", values.get("period_config"));
+  }
+
+  @Test
+  public void monthlyAcceptsBothDayBoundaries() {
+    for (int day : new int[]{1, 31}) {
+      Map<String, Object> values = FormDataChore.create("Filter", "", "monthly", 1, day,
+          Collections.emptyList(), start);
+      assertEquals(day, values.get("period_days"));
+      assertEquals("", values.get("period_config"));
+    }
   }
 
   @Test
@@ -73,11 +96,15 @@ public class FormDataChoreTest {
   @Test
   public void rejectsInvalidSchedulesBeforeSending() {
     assertThrows(IllegalArgumentException.class, () -> FormDataChore.create(" ", "", "daily", 1, 1, Collections.emptyList(), start));
+    assertThrows(IllegalArgumentException.class, () -> FormDataChore.create(null, "", "daily", 1, 1, Collections.emptyList(), start));
+    assertThrows(IllegalArgumentException.class, () -> FormDataChore.create("x", "", null, 1, 1, Collections.emptyList(), start));
     assertThrows(IllegalArgumentException.class, () -> FormDataChore.create("x", "", "unknown", 1, 1, Collections.emptyList(), start));
     assertThrows(IllegalArgumentException.class, () -> FormDataChore.create("x", "", "daily", 0, 1, Collections.emptyList(), start));
     assertThrows(IllegalArgumentException.class, () -> FormDataChore.create("x", "", "weekly", 1, 1, Collections.emptyList(), start));
+    assertThrows(IllegalArgumentException.class, () -> FormDataChore.create("x", "", "weekly", 1, 1, null, start));
     assertThrows(IllegalArgumentException.class, () -> FormDataChore.create("x", "", "weekly", 1, 1, Collections.singletonList("Monday"), start));
     assertThrows(IllegalArgumentException.class, () -> FormDataChore.create("x", "", "monthly", 1, 32, Collections.emptyList(), start));
+    assertThrows(IllegalArgumentException.class, () -> FormDataChore.create("x", "", "monthly", 1, 0, Collections.emptyList(), start));
     assertThrows(IllegalArgumentException.class, () -> FormDataChore.create("x", "", "yearly", 1, 1, Collections.emptyList(), null));
   }
 }
